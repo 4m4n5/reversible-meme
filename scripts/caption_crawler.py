@@ -10,6 +10,7 @@ warnings.filterwarnings('ignore')
 from tqdm import tqdm
 import time
 import argparse
+import json
 
 parser = argparse.ArgumentParser(description='Caption Crawler')
 parser.add_argument('--sm', action='store', dest='sm', default=1)
@@ -42,11 +43,12 @@ def download_web_image(url, name):
 data = pd.read_csv('/u/as3ek/github/reversible-meme/data/meme_metadata.csv')
 data = data[start_meme:end_meme]
 
-columns = ['name', 'link', 'caption_top', 'caption_bottom', 'local_link', 'votes']
-caption_data = pd.DataFrame(columns = columns)
+overall_data = {}
 
 for index, row in tqdm(data.iterrows()):
     caption_count = 0
+    caption_data = {}
+
     meme_link = row['link']
     img_link = row['img_url']
     img_name = row['name']
@@ -66,9 +68,21 @@ for index, row in tqdm(data.iterrows()):
             text0 = caption.find('div', {'class': 'optimized-instance-text0'}).text.strip()
             text1 = caption.find('div', {'class': 'optimized-instance-text1'}).text.strip()
             upvotes = int(block.find('div', {'class': 'score'}).text.replace(',', '').strip())
-            tmp = pd.DataFrame([[img_name, meme_link, text0, text1, local_link, upvotes]])
-            tmp.columns = columns
-            print(tmp)
-            caption_data = caption_data.append(tmp, ignore_index=True)
+            tmp = {
+                    'name': img_name,
+                    'link': meme_link,
+                    'caption_top': text0,
+                    'caption_bottom': text1,
+                    'local_link': local_link,
+                    'upvotes': upvotes
+                    }
 
-    caption_data.to_csv('/u/as3ek/github/reversible-meme/data/caption_data_' + str(start_meme) + '_' + str(end_meme)+ '.csv')
+            caption_data[caption_count] = tmp
+            caption_count = caption_count + 1
+
+    overall_data[meme_link] = caption_data
+
+    filename = '/u/as3ek/github/reversible-meme/data/caption_data_' + str(start_meme) + '_' + str(end_meme) + '.json'
+    
+    with open(filename, 'w', encoding='utf-8') as f:
+        json.dump(overall_data, f, ensure_ascii=False, indent=4)
