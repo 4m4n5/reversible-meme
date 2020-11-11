@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/u/as3ek/github/reversible-meme/scripts/meme_crawler.py", line 47, in <module>
+    data.to_csv('/u/as3ek/reversible-meme/data/meme_metadata.csv', index=False)
+  File "/sw/centos/anaconda3/5.0.1/lib/python3.6/site-packages/pandas/core/frame.py", line 1403, in to_csv
+    formatter.save()
+  File "/sw/centos/anaconda3/5.0.1/lib/python3.6/site-packages/pandas/io/formats/format.py", line 1577, in save
+    compression=self.compression)
+  File "/sw/centos/anaconda3/5.0.1/lib/python3.6/site-packages/pandas/io/common.py", line 385, in _get_handle
+    f = open(path_or_buf, mode, errors='replace')
+FileNotFoundError: [Errno 2] No such file or directory: '/u/as3ek/reversible-meme/data/meme_metadata.csv'
