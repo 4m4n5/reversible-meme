@@ -39,7 +39,7 @@ for page in range(1, meme_pages):
     for img_div in img_divs:
         img_src = img_div.find('img').get('src')
         link = img_div.find('a').get('href')
-        title = img_src = img_div.find('img').get('alt')
+        title = img_div.find('img').get('alt')
         tmp = pd.DataFrame([[title, link, img_src]])
         tmp.columns = columns
         data = data.append(tmp, ignore_index=True)
@@ -53,7 +53,7 @@ for index, row in tqdm(data.iterrows()):
     caption_count = 0
     meme_link = row['link']
     img_link = row['img_url']
-    img_name = row['title']
+    img_name = row['name']
     local_link = download_web_image(img_link, meme_link)
     base_url = 'https://memegenerator.net'
 
