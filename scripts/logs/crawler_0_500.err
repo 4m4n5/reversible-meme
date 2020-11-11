@@ -1,54 +1,1 @@
-0it [00:00, ?it/s]1it [01:45, 105.80s/it]2it [03:35, 106.82s/it]3it [05:21, 106.67s/it]4it [07:28, 112.86s/it]Traceback (most recent call last):
-  File "/sw/centos/anaconda3/5.0.1/lib/python3.6/site-packages/urllib3/contrib/pyopenssl.py", line 441, in wrap_socket
-    cnx.do_handshake()
-  File "/sw/centos/anaconda3/5.0.1/lib/python3.6/site-packages/OpenSSL/SSL.py", line 1716, in do_handshake
-    self._raise_ssl_error(self._ssl, result)
-  File "/sw/centos/anaconda3/5.0.1/lib/python3.6/site-packages/OpenSSL/SSL.py", line 1448, in _raise_ssl_error
-    raise SysCallError(errno, errorcode.get(errno))
-OpenSSL.SSL.SysCallError: (104, 'ECONNRESET')
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "/sw/centos/anaconda3/5.0.1/lib/python3.6/site-packages/urllib3/connectionpool.py", line 601, in urlopen
-    chunked=chunked)
-  File "/sw/centos/anaconda3/5.0.1/lib/python3.6/site-packages/urllib3/connectionpool.py", line 346, in _make_request
-    self._validate_conn(conn)
-  File "/sw/centos/anaconda3/5.0.1/lib/python3.6/site-packages/urllib3/connectionpool.py", line 850, in _validate_conn
-    conn.connect()
-  File "/sw/centos/anaconda3/5.0.1/lib/python3.6/site-packages/urllib3/connection.py", line 326, in connect
-    ssl_context=context)
-  File "/sw/centos/anaconda3/5.0.1/lib/python3.6/site-packages/urllib3/util/ssl_.py", line 329, in ssl_wrap_socket
-    return context.wrap_socket(sock, server_hostname=server_hostname)
-  File "/sw/centos/anaconda3/5.0.1/lib/python3.6/site-packages/urllib3/contrib/pyopenssl.py", line 448, in wrap_socket
-    raise ssl.SSLError('bad handshake: %r' % e)
-ssl.SSLError: ("bad handshake: SysCallError(104, 'ECONNRESET')",)
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "/sw/centos/anaconda3/5.0.1/lib/python3.6/site-packages/requests/adapters.py", line 440, in send
-    timeout=timeout
-  File "/sw/centos/anaconda3/5.0.1/lib/python3.6/site-packages/urllib3/connectionpool.py", line 639, in urlopen
-    _stacktrace=sys.exc_info()[2])
-  File "/sw/centos/anaconda3/5.0.1/lib/python3.6/site-packages/urllib3/util/retry.py", line 388, in increment
-    raise MaxRetryError(_pool, url, error or ResponseError(cause))
-urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='memegenerator.net', port=443): Max retries exceeded with url: /Futurama-Fry/images/popular/alltime/page/149 (Caused by SSLError(SSLError("bad handshake: SysCallError(104, 'ECONNRESET')",),))
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "/u/as3ek/github/reversible-meme/scripts/caption_crawler.py", line 59, in <module>
-    source_code = requests.get(url)
-  File "/sw/centos/anaconda3/5.0.1/lib/python3.6/site-packages/requests/api.py", line 72, in get
-    return request('get', url, params=params, **kwargs)
-  File "/sw/centos/anaconda3/5.0.1/lib/python3.6/site-packages/requests/api.py", line 58, in request
-    return session.request(method=method, url=url, **kwargs)
-  File "/sw/centos/anaconda3/5.0.1/lib/python3.6/site-packages/requests/sessions.py", line 508, in request
-    resp = self.send(prep, **send_kwargs)
-  File "/sw/centos/anaconda3/5.0.1/lib/python3.6/site-packages/requests/sessions.py", line 618, in send
-    r = adapter.send(request, **kwargs)
-  File "/sw/centos/anaconda3/5.0.1/lib/python3.6/site-packages/requests/adapters.py", line 506, in send
-    raise SSLError(e, request=request)
-requests.exceptions.SSLError: HTTPSConnectionPool(host='memegenerator.net', port=443): Max retries exceeded with url: /Futurama-Fry/images/popular/alltime/page/149 (Caused by SSLError(SSLError("bad handshake: SysCallError(104, 'ECONNRESET')",),))
-
+0it [00:00, ?it/s]1it [03:03, 183.35s/it]

@@ -60,13 +60,15 @@ for index, row in tqdm(data.iterrows()):
         plain_text = source_code.text        
         soup = BeautifulSoup(plain_text)
 
-        for meme in soup.findAll('div', {'class': 'gallery-img'}):
+        for block in soup.findAll('div', {'class': 'single-generator-body'}):
+            meme = block.find('span', {'class': 'generator-img'})
             caption = meme.find('div', {'class': 'optimized-instance-container'})
             text0 = caption.find('div', {'class': 'optimized-instance-text0'}).text.strip()
             text1 = caption.find('div', {'class': 'optimized-instance-text1'}).text.strip()
-            upvotes = int(meme.find('div', {'class': 'score'}).text.replace(',', '').strip())
-            tmp = pd.DataFrame([[img_name, meme_link, text0, text1, download_name, upvotes]])
+            upvotes = int(block.find('div', {'class': 'score'}).text.replace(',', '').strip())
+            tmp = pd.DataFrame([[img_name, meme_link, text0, text1, local_link, upvotes]])
             tmp.columns = columns
+            print(tmp)
             caption_data = caption_data.append(tmp, ignore_index=True)
 
     caption_data.to_csv('/u/as3ek/github/reversible-meme/data/caption_data_' + str(start_meme) + '_' + str(end_meme)+ '.csv')
