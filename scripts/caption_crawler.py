@@ -9,14 +9,23 @@ import warnings
 warnings.filterwarnings('ignore')
 from tqdm import tqdm
 import time
+import argparse
+
+parser = argparse.ArgumentParser(description='Caption Crawler')
+parser.add_argument('--sm', action='store', dest='sm', default=1)
+parser.add_argument('--em', action='store', dest='em', default=1)
+parser.add_argument('--ncp', action='store', dest='ncp', default=200)
+
 
 base_url = "https://memegenerator.net/memes/popular/alltime/page/"
 
-columns = ['name', 'link', 'img_url']
-data = pd.DataFrame(columns = columns)
+args = parser.parse_args()
 
-meme_pages = 100
-num_caption_pages = 200
+start_meme = int(args.sm)
+end_meme = int(args.em)
+num_caption_pages = int(args.ncp)
+
+print(args)
 
 def download_web_image(url, name):
     r = requests.get(url, stream=True, headers={'User-agent': 'Mozilla/5.0'})
@@ -30,22 +39,8 @@ def download_web_image(url, name):
     
     return full_name
 
-
-for page in range(1, meme_pages):
-    url = base_url + str(page)
-    source_code = requests.get(url)
-    plain_text = source_code.text
-    soup = BeautifulSoup(plain_text)
-    img_divs = soup.findAll('div', {'class': 'char-img'})
-    for img_div in img_divs:
-        img_src = img_div.find('img').get('src')
-        link = img_div.find('a').get('href')
-        title = img_div.find('img').get('alt')
-        tmp = pd.DataFrame([[title, link, img_src]])
-        tmp.columns = columns
-        data = data.append(tmp, ignore_index=True)
-
-data.to_csv('/u/as3ek/github/reversible-meme/data/meme_metadata.csv', index=False)
+data = pd.read_csv('/u/as3ek/github/reversible-meme/data/meme_metadata.csv')
+data = data[start_meme:end_meme]
 
 columns = ['name', 'link', 'caption_top', 'caption_bottom', 'local_link', 'votes']
 caption_data = pd.DataFrame(columns = columns)
@@ -74,5 +69,4 @@ for index, row in tqdm(data.iterrows()):
             tmp.columns = columns
             caption_data = caption_data.append(tmp, ignore_index=True)
 
-caption_data.to_csv('/u/as3ek/github/reversible-meme/data/caption_data.csv')
-
+    caption_data.to_csv('/u/as3ek/github/reversible-meme/data/caption_data_' + str(start_meme) + '_' + str(end_meme)+ '.csv')
