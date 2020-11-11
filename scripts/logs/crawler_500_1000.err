@@ -1,1 +1,0 @@
-0it [00:00, ?it/s]1it [02:46, 166.18s/it]2it [05:38, 168.15s/it]3it [08:42, 172.84s/it]4it [11:14, 166.56s/it]5it [13:44, 161.47s/it]6it [16:15, 158.36s/it]7it [18:48, 156.89s/it]8it [21:18, 154.71s/it]9it [22:41, 133.13s/it]slurmstepd: error: *** JOB 430054 ON hermes3 CANCELLED AT 2020-11-11T18:02:58 ***
