@@ -10,4 +10,3 @@
 module load anaconda3
 
 python -u /u/as3ek/github/reversible-meme/scripts/caption_crawler.py --sm 1000 --em 1400
-

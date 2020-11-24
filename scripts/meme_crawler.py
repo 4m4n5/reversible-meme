@@ -1,22 +1,23 @@
+import time
+from tqdm import tqdm
 import numpy as np
 import pandas as pd
 import random
 import urllib.request
-import requests 
+import requests
 import shutil
 from bs4 import BeautifulSoup
-import warnings 
+import warnings
 warnings.filterwarnings('ignore')
-from tqdm import tqdm
-import time
 
 base_url = "https://memegenerator.net/memes/popular/alltime/page/"
 
 columns = ['name', 'link', 'img_url']
-data = pd.DataFrame(columns = columns)
+data = pd.DataFrame(columns=columns)
 
 meme_pages = 100
 num_caption_pages = 200
+
 
 def download_web_image(url, name):
     r = requests.get(url, stream=True, headers={'User-agent': 'Mozilla/5.0'})
@@ -27,7 +28,7 @@ def download_web_image(url, name):
             shutil.copyfileobj(r.raw, f)
     else:
         print('Could not download ' + str(name))
-    
+
     return full_name
 
 
@@ -48,7 +49,7 @@ for page in range(1, meme_pages):
 data.to_csv('/u/as3ek/github/reversible-meme/data/meme_metadata.csv', index=False)
 
 columns = ['name', 'link', 'caption_top', 'caption_bottom', 'local_link', 'votes']
-caption_data = pd.DataFrame(columns = columns)
+caption_data = pd.DataFrame(columns=columns)
 
 for index, row in tqdm(data.iterrows()):
     caption_count = 0
@@ -62,7 +63,7 @@ for index, row in tqdm(data.iterrows()):
         url = base_url + row['link'] + '/images/popular/alltime/page/' + str(page)
         time.sleep(random.uniform(0, 0.3))
         source_code = requests.get(url)
-        plain_text = source_code.text        
+        plain_text = source_code.text
         soup = BeautifulSoup(plain_text)
 
         for meme in soup.findAll('div', {'class': 'gallery-img'}):
@@ -75,4 +76,3 @@ for index, row in tqdm(data.iterrows()):
             caption_data = caption_data.append(tmp, ignore_index=True)
 
 caption_data.to_csv('/u/as3ek/github/reversible-meme/data/caption_data.csv')
-
