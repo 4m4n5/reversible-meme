@@ -1,4 +1,3 @@
-
 import argparse
 import json
 from collections import Counter
@@ -37,39 +36,40 @@ def generate_json_data(metadata_path, caption_path, imgs_path, max_captions_per_
 
     for img in tqdm(metadata['link']):
         caption_count = 0
-        for key, value in data[img].items():
-            # Get the caption
-            sentence = ' '.join([value['caption_top'], value['caption_bottom']])
+        if img in data:
+            for key, value in data[img].items():
+                # Get the caption
+                sentence = ' '.join([value['caption_top'], value['caption_bottom']])
 
-            # Split into tokens
-            tokens = word_tokenize(sentence)
-            tokens = [token.lower() for token in tokens][:max_caption_length]
+                # Split into tokens
+                tokens = word_tokenize(sentence)
+                tokens = [token.lower() for token in tokens][:max_caption_length]
 
-            # TODO: Use advanced tokens
-            mod_tokens = word_tokenize(value['name'])
-            mod_tokens = [token.lower() for token in mod_tokens]
+                # TODO: Use advanced tokens
+                mod_tokens = word_tokenize(value['name'])
+                mod_tokens = [token.lower() for token in mod_tokens]
 
-            # Get image path
-            img_path = value['local_link']
+                # Get image path
+                img_path = value['local_link']
 
-            if caption_count < max_captions_per_image:
-                caption_count += 1
-            else:
-                break
+                if caption_count < max_captions_per_image:
+                    caption_count += 1
+                else:
+                    break
 
-            r = random.randint(0, 100)
-            if r < int(train_perc):
-                train_img_paths.append(img_path)
-                train_caption_tokens.append(tokens)
-                train_mod_tokens.append(mod_tokens)
-            else:
-                val_img_paths.append(img_path)
-                val_caption_tokens.append(tokens)
-                val_mod_tokens.append(mod_tokens)
+                r = random.randint(0, 100)
+                if r < int(train_perc):
+                    train_img_paths.append(img_path)
+                    train_caption_tokens.append(tokens)
+                    train_mod_tokens.append(mod_tokens)
+                else:
+                    val_img_paths.append(img_path)
+                    val_caption_tokens.append(tokens)
+                    val_mod_tokens.append(mod_tokens)
 
-            # Get max length of a caption to pad accordingly later
-            max_length = max(max_length, len(tokens))
-            word_count.update(tokens)
+                # Get max length of a caption to pad accordingly later
+                max_length = max(max_length, len(tokens))
+                word_count.update(tokens)
 
     words = [word for word in word_count.keys() if word_count[word] >= args.min_word_count]
     word_dict = {word: idx + 4 for idx, word in enumerate(words)}
@@ -95,13 +95,13 @@ def generate_json_data(metadata_path, caption_path, imgs_path, max_captions_per_
     with open(data_folder + '/train_img_paths.json', 'w') as f:
         json.dump(train_img_paths, f)
     with open(data_folder + '/val_img_paths.json', 'w') as f:
-        json.dump(validation_img_paths, f)
+        json.dump(val_img_paths, f)
 
     # Captions
     with open(data_folder + '/train_captions.json', 'w') as f:
         json.dump(train_captions, f)
     with open(data_folder + '/val_captions.json', 'w') as f:
-        json.dump(validation_captions, f)
+        json.dump(val_captions, f)
 
     # Modifiers
     with open(data_folder + '/train_mods.json', 'w') as f:
