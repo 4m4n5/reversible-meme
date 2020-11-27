@@ -19,7 +19,7 @@ class MemeDataset(Dataset):
         self.img_paths = json.load(open(data_path + '/{}_img_paths.json'.format(split_type), 'r'))
         self.captions = json.load(open(data_path + '/{}_captions.json'.format(split_type), 'r'))
         self.mods = json.load(open(data_path + '/{}_mods.json'.format(split_type), 'r'))
-        self.word_to_idx = json.load(open(data_path + '/word_dict.json')
+        self.word_to_idx = json.load(open(data_path + '/word_dict.json'))
         self.idx_to_word =  {v: k for k, v in self.word_to_idx.items()}
 
     def __getitem__(self, index):
@@ -29,7 +29,7 @@ class MemeDataset(Dataset):
         if self.transform is not None:
             img = self.transform(img)
 
-        return torch.FloatTensor(img), torch.tensor(self.captions[index], torch.tensor(self.mods[index])
+        return torch.FloatTensor(img), torch.tensor(self.captions[index]), torch.tensor(self.mods[index])
 
     def __len__(self):
         return len(self.captions)
