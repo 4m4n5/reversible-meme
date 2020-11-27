@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 from torchvision.models import resnet18, resnet34, vgg19
-import gensim
 import numpy as np
 
 
@@ -9,10 +8,14 @@ class Encoder(nn.Module):
     def __init__(self, txt_enc_dim, img_enc_dim, word_dict, img_enc_net='resnet18', use_glove=True, glove_path='data/glove/glove.twitter.27B.200d.txt', train_enc=True, hidden_dims=[2048, 1024, 512]):
         super(Encoder, self).__init__()
 
+        # Consider last element of hidden dims as final enc dimension
         self.enc_dim = hidden_dims[-1]
+        # Initialize text encoder
         self.txt_encoder = TextEncoder(word_dict, txt_enc_dim, use_glove, glove_path, train_enc)
+        # Initialize text encoder
         self.img_encoder = ImageEncoder(img_enc_dim, img_enc_net)
 
+        # Design final encoding network using hidden dims
         modules = []
         in_dim = txt_enc_dim+img_enc_dim
         for h in hidden_dims[:-1]:
@@ -23,24 +26,30 @@ class Encoder(nn.Module):
             in_dim = h
 
         self.encoder = nn.Sequential(*modules)
+        # Initialize seperate layers for mu and sigma
         self.fc_mu = nn.Linear(hidden_dims[-2], self.enc_dim)
         self.fc_var = nn.Linear(hidden_dims[-2], self.enc_dim)
 
     def forward(self, img, mods):
+        # Encode both data
         img_enc = self.img_encoder(img)
         txt_enc = self.txt_encoder(mods)
 
+        # Concat on the first dimension
         x = torch.cat([img_enc, txt_enc], dim=1)
         x = self.encoder(x)
 
+        # Get mu and logvar using dc layers
         mu = self.fc_mu(x)
         logvar = self.fc_var(x)
 
+        # Sample z using reparameterization
         z = self.reparameterize(mu, logvar)
 
         return z, mu, logvar
 
     def reparameterize(self, mu, logvar):
+        # Sample z using mu and logvar
         std = torch.exp(0.5 * logvar)
         eps = torch.randn_like(std)
         return eps * std + mu
@@ -49,9 +58,10 @@ class Encoder(nn.Module):
 class TextEncoder(nn.Module):
     def __init__(self, word_dict, txt_enc_dim, use_glove, glove_path, train_enc):
         super(TextEncoder, self).__init__()
-
+        # Save the dimensions required for text encoding
         self.txt_enc_dim = txt_enc_dim
 
+        # If using glove, load the Embedding layer with glove vectors
         if use_glove:
             self.txt_enc_layer, self.vocab_size, self.glove_dim = self.get_text_encoding_layer(
                 glove_path, word_dict, train_enc)
@@ -63,18 +73,25 @@ class TextEncoder(nn.Module):
         self.fc = nn.Linear(200, self.txt_enc_dim)
 
     def forward(self, x):
+        # Get embeddings for the text
         x = self.txt_enc_layer(x)
+        # Get mean of all mod vectors
         x = torch.mean(x, dim=1)
+        # Transform to get representation
         x = self.fc(x)
 
         return x
 
     def get_weights_matrix(self, glove_path, word_dict):
+        # Load glove model using the given path
         glove, glove_dim = self.load_glove_model(glove_path)
+        # Get vocab size
         matrix_len = len(word_dict)
+        # Initialize empty matrix
         weights_matrix = np.zeros((matrix_len, glove_dim))
         words_found = 0
 
+        # If word is present in glove, add the embedding else random
         for i, word in enumerate(word_dict):
             try:
                 weights_matrix[i] = glove[word]
@@ -88,11 +105,14 @@ class TextEncoder(nn.Module):
         return weights_matrix
 
     def get_text_encoding_layer(self, glove_path, word_dict, train_enc):
+        # Get weights matrix given glove vectors and word dict
         weights_matrix = self.get_weights_matrix(glove_path, word_dict)
         vocab_size, txt_enc_dim = weights_matrix.size()
+        # Initialize embedding layer using the glove weights matrix
         txt_enc_layer = nn.Embedding(vocab_size, txt_enc_dim)
         txt_enc_layer.load_state_dict({'weight': weights_matrix})
 
+        # If embeddings are not to be trained
         if train_enc == False:
             emb_layer.weight.requires_grad = False
 
@@ -114,6 +134,7 @@ class TextEncoder(nn.Module):
 class ImageEncoder(nn.Module):
     def __init__(self, img_enc_dim, img_enc_net):
         super(ImageEncoder, self).__init__()
+        # Save values for which model to use and the embedding size
         self.img_enc_net = img_enc_net
         self.img_enc_dim = img_enc_dim
 
@@ -123,8 +144,11 @@ class ImageEncoder(nn.Module):
         self.fc = nn.Linear(img_dim, self.img_enc_dim)
 
     def forward(self, x):
+        # Encode image using model
         x = self.image_encoder(x)
+        # Flatten
         x = x.view(x.size(0), -1)
+        # Transform to get embeddings
         x = self.fc(x)
         return x
 
