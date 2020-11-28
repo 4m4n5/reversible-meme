@@ -1,9 +1,10 @@
 import torch
 import torch.nn as nn
+from attention import Attention
 
 
 class Decoder(nn.Module):
-    def __init__(self, encoder, vocab_size, enc_dim, lstm_hidden_size=512, use_tf=False):
+    def __init__(self, encoder, vocab_size, enc_dim, lstm_hidden_dim=256, use_tf=False):
         super(Decoder, self).__init__()
         # Use teacher forcing?
         self.use_tf = use_tf
@@ -13,19 +14,21 @@ class Decoder(nn.Module):
 
         self.embedding = encoder.txt_encoder.txt_enc_layer
 
-        self.init_h = nn.Linear(enc_dim, lstm_hidden_size)
-        self.init_c = nn.Linear(enc_dim, lstm_hidden_size)
+        self.init_h = nn.Linear(enc_dim, lstm_hidden_dim)
+        self.init_c = nn.Linear(enc_dim, lstm_hidden_dim)
         self.tanh = nn.Tanh()
 
-        self.f_beta = nn.Linear(lstm_hidden_size, enc_dim)
+        self.f_beta = nn.Linear(lstm_hidden_dim, enc_dim)
         self.sigmoid = nn.Sigmoid()
 
-        self.deep_output = nn.Linear(lstm_hidden_size, vocab_size)
+        self.deep_output = nn.Linear(lstm_hidden_dim, vocab_size)
         self.dropout = nn.Dropout()
 
-        self.lstm = nn.LSTMCell(lstm_hidden_size + enc_dim, lstm_hidden_size)
+        self.attention = Attention(enc_dim, lstm_hidden_dim)
+        self.lstm = nn.LSTMCell(enc_dim, lstm_hidden_dim)
 
     def forward(self, encoding, caption):
+        # import pdb; pdb.set_trace()
         batch_size = encoding.size(0)
 
         h, c = self.get_init_lstm_state(encoding)
@@ -41,34 +44,34 @@ class Decoder(nn.Module):
         alphas = torch.zeros(batch_size, max_timespan, encoding.size(1)).cuda()
 
         for t in range(max_timespan):
-            context, alpha = self.attention(encoding, h)
-            gate = self.sigmoid(self.f_beta(h))
-            gated_context = gate * context
+            # context, alpha = self.attention(encoding.unsqueeze(1).unsqueeze(1), h)
+            # gate = self.sigmoid(self.f_beta(h))
+            # gated_context = gate * context
 
             if self.use_tf and self.training:
-                lstm_input = torch.cat((embedding[:, t], gated_context), dim=1)
+                # lstm_input = torch.cat((embedding[:, t], gated_context), dim=1)
+                lstm_input = embedding[:, t]
             else:
                 embedding = embedding.squeeze(1) if embedding.dim() == 3 else embedding
-                lstm_input = torch.cat((embedding, gated_context), dim=1)
+                # lstm_input = torch.cat((embedding, gated_context), dim=1)
+                lstm_input = embedding
 
             h, c = self.lstm(lstm_input, (h, c))
             output = self.deep_output(self.dropout(h))
 
             preds[:, t] = output
-            alphas[:, t] = alpha
+            # alphas[:, t] = alpha
 
             if not self.training or not self.use_tf:
                 embedding = self.embedding(output.max(1)[1].reshape(batch_size, 1))
 
         return preds, alphas, h
 
-    def get_init_lstm_state(self, img_features):
-        avg_features = img_features.mean(dim=1)
-
-        c = self.init_c(avg_features)
+    def get_init_lstm_state(self, encoding):
+        c = self.init_c(encoding)
         c = self.tanh(c)
 
-        h = self.init_h(avg_features)
+        h = self.init_h(encoding)
         h = self.tanh(h)
 
         return h, c
@@ -143,10 +146,10 @@ class Decoder(nn.Module):
 
 
 class AlignNet(nn.Module):
-    def __init__(self, lstm_hidden_size, enc_dim):
+    def __init__(self, lstm_hidden_dim, enc_dim):
         super(AlignNet, self).__init__()
-        self.fc_mu = nn.Linear(lstm_hidden_size, enc_dim)
-        self.fc_var = nn.Linear(lstm_hidden_size, enc_dim)
+        self.fc_mu = nn.Linear(lstm_hidden_dim, enc_dim)
+        self.fc_var = nn.Linear(lstm_hidden_dim, enc_dim)
 
     def forward(self, x):
         x = torch.flatten(x, start_dim=1)
@@ -160,5 +163,5 @@ class AlignNet(nn.Module):
     def reparameterize(self, mu, logvar):
         std = torch.exp(0.5 * logvar)
         eps = torch.randn_like(std)
-        
+
         return eps * std + mu

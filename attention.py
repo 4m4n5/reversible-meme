@@ -3,11 +3,11 @@ import torch.nn as nn
 
 
 class Attention(nn.Module):
-    def __init__(self, encoder_dim):
+    def __init__(self, enc_dim, hidden_dim):
         super(Attention, self).__init__()
-        self.U = nn.Linear(512, 512)
-        self.W = nn.Linear(encoder_dim, 512)
-        self.v = nn.Linear(512, 1)
+        self.U = nn.Linear(hidden_dim, hidden_dim)
+        self.W = nn.Linear(enc_dim, hidden_dim)
+        self.v = nn.Linear(hidden_dim, 1)
         self.tanh = nn.Tanh()
         self.softmax = nn.Softmax(1)
 

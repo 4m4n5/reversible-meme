@@ -5,39 +5,46 @@ import numpy as np
 
 
 class Encoder(nn.Module):
-    def __init__(self, txt_enc_dim, img_enc_dim, word_dict, img_enc_net='resnet18', use_glove=True, glove_path='data/glove/glove.twitter.27B.200d.txt', train_enc=True, hidden_dims=[2048, 1024, 512]):
+    def __init__(self, txt_enc_dim, img_enc_dim, enc_dim, word_dict, img_enc_net='resnet18', use_glove=True, glove_path='data/glove/glove.twitter.27B.200d.txt', train_enc=True, hidden_dim=512):
         super(Encoder, self).__init__()
 
         # Consider last element of hidden dims as final enc dimension
-        self.enc_dim = hidden_dims[-1]
+        self.enc_dim = enc_dim
         # Initialize text encoder
         self.txt_encoder = TextEncoder(word_dict, txt_enc_dim, use_glove, glove_path, train_enc)
         # Initialize text encoder
         self.img_encoder = ImageEncoder(img_enc_dim, img_enc_net)
 
         # Design final encoding network using hidden dims
-        modules = []
-        in_dim = txt_enc_dim+img_enc_dim
-        for h in hidden_dims[:-1]:
-            modules.append(nn.Sequential(
-                nn.Linear(in_dim, h),
-                nn.ReLU()
-            ))
-            in_dim = h
+        self.gate_w = nn.Parameter(torch.rand(1))
+        self.gate_fc = nn.Sequential(
+            nn.Linear(img_enc_dim+txt_enc_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.Sigmoid()
+        )
 
-        self.encoder = nn.Sequential(*modules)
+        self.res_w = nn.Parameter(torch.rand(1))
+        self.res_fc = nn.Sequential(
+            nn.Linear(img_enc_dim+txt_enc_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim)
+        )
+
         # Initialize seperate layers for mu and sigma
-        self.fc_mu = nn.Linear(hidden_dims[-2], self.enc_dim)
-        self.fc_var = nn.Linear(hidden_dims[-2], self.enc_dim)
+        self.fc_mu = nn.Linear(hidden_dim, self.enc_dim)
+        self.fc_var = nn.Linear(hidden_dim, self.enc_dim)
 
-    def forward(self, img, mods):
+    def forward(self, img, mod):
         # Encode both data
         img_enc = self.img_encoder(img)
-        txt_enc = self.txt_encoder(mods)
+        txt_enc = self.txt_encoder(mod)
 
         # Concat on the first dimension
         x = torch.cat([img_enc, txt_enc], dim=1)
-        x = self.encoder(x)
+        x_gate = self.gate_fc(x) * txt_enc
+        x_res = self.res_fc(x)
+        x = self.gate_w * x_gate + self.res_w * x_res
 
         # Get mu and logvar using dc layers
         mu = self.fc_mu(x)
@@ -65,12 +72,14 @@ class TextEncoder(nn.Module):
         if use_glove:
             self.txt_enc_layer, self.vocab_size, self.glove_dim = self.get_text_encoding_layer(
                 glove_path, word_dict, train_enc)
+            in_dim = 200
         else:
             self.vocab_size = len(word_dict)
             self.txt_enc_layer = nn.Embedding(self.vocab_size, self.txt_enc_dim)
+            in_dim = self.txt_enc_dim
 
         # Initialize a FC layer for transforming encoding
-        self.fc = nn.Linear(200, self.txt_enc_dim)
+        self.fc = nn.Linear(in_dim, self.txt_enc_dim)
 
     def forward(self, x):
         # Get embeddings for the text
@@ -145,7 +154,7 @@ class ImageEncoder(nn.Module):
 
     def forward(self, x):
         # Encode image using model
-        x = self.image_encoder(x)
+        x = self.img_encoder(x)
         # Flatten
         x = x.view(x.size(0), -1)
         # Transform to get embeddings
@@ -155,15 +164,15 @@ class ImageEncoder(nn.Module):
     def get_image_encoder(self, img_enc_net):
         if img_enc_net == 'resnet18':
             img_enc = resnet18(pretrained=True)
-            img_enc = nn.Sequential(*list(img_enc.children())[:-2])
+            img_enc = nn.Sequential(*list(img_enc.children())[:-1])
             img_dim = 512
         if img_enc_net == 'resnet34':
             img_enc = resnet34(pretrained=True)
-            img_enc = nn.Sequential(*list(img_enc.children())[:-2])
+            img_enc = nn.Sequential(*list(img_enc.children())[:-1])
             img_dim = 512
         if img_enc_net == 'resnet50':
             img_enc = resnet50(pretrained=True)
-            img_enc = nn.Sequential(*list(img_enc.children())[:-2])
+            img_enc = nn.Sequential(*list(img_enc.children())[:-1])
             img_dim = 2048
         if img_enc_net == 'vgg19':
             img_enc = vgg19(pretrained=True)

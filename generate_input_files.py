@@ -1,14 +1,23 @@
+from tqdm import tqdm
+import random
+import pandas as pd
 import argparse
 import json
 from collections import Counter
 from nltk.tokenize import word_tokenize
 import nltk
+from nltk.corpus import wordnet
 import os
 nltk.download('punkt')
-import pandas as pd
-import random
-from tqdm import tqdm
 
+def get_synonym(word, n=3):
+    synonyms = []
+    for syn in wordnet.synsets(word):
+        for l in syn.lemmas():
+            synonyms.append(l.name())
+            if len(synonyms) >= n:
+                synonyms.append(word)
+                return random.choice(synonyms)
 
 def generate_json_data(metadata_path, caption_path, imgs_path, max_captions_per_image,
                        min_word_count, train_perc, max_caption_length,
@@ -46,8 +55,15 @@ def generate_json_data(metadata_path, caption_path, imgs_path, max_captions_per_
                 tokens = [token.lower() for token in tokens][:max_caption_length]
 
                 # TODO: Use advanced tokens
-                mod_tokens = word_tokenize(value['name'])
+                mod_tokens = word_tokenize(value['name']) + tokens
                 mod_tokens = [token.lower() for token in mod_tokens]
+
+                keep_mod_tokens = []
+                for w, tag in nltk.pos_tag(mod_tokens):
+                    if tag in ['FW', 'JJ', 'JJR', 'JJS', 'NN', 'NNP', 'NNPS', 'PDT', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ']:
+                        keep_mod_tokens.append(get_synonym(w))
+
+                mod_tokens = keep_mod_tokens[:max_caption_length]
 
                 # Get image path
                 img_path = value['local_link']
