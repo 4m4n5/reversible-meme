@@ -13,6 +13,7 @@ from dataset import MemeDataset
 from decoder import Decoder, AlignNet
 from encoder import Encoder, TextEncoder, ImageEncoder
 from utils import AverageMeter, accuracy, calculate_caption_lengths
+import os
 
 data_transforms = transforms.Compose([
     transforms.Resize((224, 224)),
@@ -24,13 +25,18 @@ data_transforms = transforms.Compose([
 
 def main(args):
     # writer = SummaryWriter()
-    word_dict = json.load(open(args.data + 'word_dict.json', 'r'))
+    print(args)
+    word_dict = json.load(open(args.data + '/word_dict.json', 'r'))
     vocab_size = len(word_dict)
+
+    lstm_hidden_dim = 256
+    if args.use_glove:
+        lstm_hidden_dim = 200
 
     encoder = Encoder(args.txt_enc_dim, args.img_enc_dim, args.enc_dim, word_dict,
                       args.img_enc_net, args.use_glove, args.glove_path, args.train_enc)
-    decoder = Decoder(encoder, vocab_size, args.enc_dim, use_tf=args.use_tf)
-    aligner = AlignNet(lstm_hidden_dim=256, enc_dim=args.enc_dim)
+    decoder = Decoder(encoder, vocab_size, args.enc_dim, lstm_hidden_dim, use_tf=args.use_tf)
+    aligner = AlignNet(lstm_hidden_dim, enc_dim=args.enc_dim)
 
     if args.encoder_model:
         encoder.load_state_dict(torch.load(args.encoder_model))
@@ -71,7 +77,6 @@ def main(args):
         batch_size=args.batch_size, shuffle=True, num_workers=4
     )
 
-    print('Starting training with {}'.format(args))
     for epoch in range(1, args.epochs + 1):
         scheduler_enc.step()
         scheduler_dec.step()
@@ -81,17 +86,20 @@ def main(args):
         # validate(epoch, encoder, decoder, cross_entropy_loss, val_loader,
         #          word_dict, args.alpha_c, args.log_interval, writer)
 
+        # Make subdireactory if not exists
+        dir = os.path.join(args.model_fldr, args.id)
+        if not os.path.exists(dir):
+            os.makedirs(dir)
 
-        enc_file = args.model_fldr + 'encoder_' + str(epoch) + '.pth'
-        dec_file = args.model_fldr + 'decoder_' + str(epoch) + '.pth'
-        aln_file = args.model_fldr + 'aligner_' + str(epoch) + '.pth'
+        enc_file = os.path.join(dir, 'encoder_' + str(epoch) + '.pth')
+        dec_file = os.path.join(dir, 'decoder_' + str(epoch) + '.pth')
+        aln_file = os.path.join(dir, 'aligner_' + str(epoch) + '.pth')
 
         torch.save(encoder.state_dict(), enc_file)
         torch.save(decoder.state_dict(), dec_file)
         torch.save(aligner.state_dict(), aln_file)
 
         print('Saved Model!')
-    # writer.close()
 
 
 def train(epoch, encoder, decoder, aligner, enc_optim, dec_optim, aln_optim, cross_entropy_loss, train_loader, word_dict, alpha_c, lambda_kld, log_interval):
@@ -164,7 +172,20 @@ def train(epoch, encoder, decoder, aligner, enc_optim, dec_optim, aln_optim, cro
     # writer.add_scalar('train_top5_acc', top5.avg, epoch)
 
 
+# Helper function for parser
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
+
 if __name__ == "__main__":
+
     parser = argparse.ArgumentParser(description='Reversible Meme')
     parser.add_argument('--batch-size', type=int, default=32, metavar='N',
                         help='batch size for training (default: 64)')
@@ -183,21 +204,23 @@ if __name__ == "__main__":
                         help='regularization constant (default: 1)')
     parser.add_argument('--log-interval', type=int, default=100, metavar='L',
                         help='number of batches to wait before logging training stats (default: 100)')
-    parser.add_argument('--data', type=str, default='/u/as3ek/github/reversible-meme/data/',
+    parser.add_argument('--data', type=str, default='/u/as3ek/github/reversible-meme/data',
                         help='path to data images')
     parser.add_argument('--img-enc-net', choices=['vgg19', 'resnet18', 'resnet34'], default='resnet18',
                         help='Network to use in the encoder (default: resnet18)')
     parser.add_argument('--encoder-model', type=str, help='path to model')
     parser.add_argument('--decoder-model', type=str, help='path to model')
     parser.add_argument('--aligner-model', type=str, help='path to model')
-    parser.add_argument('--glove-path', type=str, default='/u/as3ek/github/reversible-meme/data/glove/glove.twitter.27B.200d.txt')
+    parser.add_argument('--glove-path', type=str,
+                        default='/u/as3ek/github/reversible-meme/data/glove/glove.twitter.27B.200d.txt')
     parser.add_argument('--use-tf', action='store_true', default=False,
                         help='Use teacher forcing when training LSTM (default: False)')
     parser.add_argument('--txt-enc-dim', type=int, default=256)
     parser.add_argument('--img-enc-dim', type=int, default=256)
     parser.add_argument('--enc-dim', type=int, default=256)
-    parser.add_argument('--use-glove', type=bool, default=True)
-    parser.add_argument('--train-enc', type=bool, default=True)
-    parser.add_argument('--model-fldr', type=str, default='/u/as3ek/github/reversible-meme/models/')
+    parser.add_argument('--use-glove', type=str2bool, nargs='?', const=True, default=True)
+    parser.add_argument('--train-enc', type=str2bool, nargs='?', const=True, default=True)
+    parser.add_argument('--model-fldr', type=str, default='/u/as3ek/github/reversible-meme/models')
+    parser.add_argument('--id', type=str, default='')
 
     main(parser.parse_args())

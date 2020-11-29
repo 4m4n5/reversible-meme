@@ -25,7 +25,7 @@ class Decoder(nn.Module):
         self.dropout = nn.Dropout()
 
         self.attention = Attention(enc_dim, lstm_hidden_dim)
-        self.lstm = nn.LSTMCell(enc_dim, lstm_hidden_dim)
+        self.lstm = nn.LSTMCell(enc_dim + lstm_hidden_dim, lstm_hidden_dim)
 
     def forward(self, encoding, caption):
         # import pdb; pdb.set_trace()
@@ -50,11 +50,11 @@ class Decoder(nn.Module):
 
             if self.use_tf and self.training:
                 # lstm_input = torch.cat((embedding[:, t], gated_context), dim=1)
-                lstm_input = embedding[:, t]
+                lstm_input = torch.cat((embedding[:, t], encoding), dim=1)
             else:
                 embedding = embedding.squeeze(1) if embedding.dim() == 3 else embedding
                 # lstm_input = torch.cat((embedding, gated_context), dim=1)
-                lstm_input = embedding
+                lstm_input = torch.cat((embedding, encoding), dim=1)
 
             h, c = self.lstm(lstm_input, (h, c))
             output = self.deep_output(self.dropout(h))

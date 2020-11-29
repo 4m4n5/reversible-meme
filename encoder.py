@@ -2,11 +2,10 @@ import torch
 import torch.nn as nn
 from torchvision.models import resnet18, resnet34, vgg19
 import numpy as np
-import gensim
 
 
 class Encoder(nn.Module):
-    def __init__(self, txt_enc_dim, img_enc_dim, enc_dim, word_dict, img_enc_net='resnet18', use_glove=True, glove_path='data/glove/glove.twitter.27B.200d.txt', train_enc=True, hidden_dim=512):
+    def __init__(self, txt_enc_dim, img_enc_dim, enc_dim, word_dict, img_enc_net, use_glove, glove_path, train_enc, hidden_dim=256):
         super(Encoder, self).__init__()
 
         # Consider last element of hidden dims as final enc dimension
