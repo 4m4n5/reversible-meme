@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from torchvision.models import resnet18, resnet34, vgg19
 import numpy as np
+import gensim
 
 
 class Encoder(nn.Module):
@@ -107,7 +108,7 @@ class TextEncoder(nn.Module):
                 words_found += 1
 
             except KeyError:
-                weights_matrix[i] = np.random(scale=0.6, size=(glove_dim, ))
+                weights_matrix[i] = np.random.normal(scale=0.6, size=(glove_dim, ))
 
         assert len(word_dict) == len(weights_matrix)
 
@@ -116,6 +117,8 @@ class TextEncoder(nn.Module):
     def get_text_encoding_layer(self, glove_path, word_dict, train_enc):
         # Get weights matrix given glove vectors and word dict
         weights_matrix = self.get_weights_matrix(glove_path, word_dict)
+        weights_matrix = torch.from_numpy(weights_matrix)
+
         vocab_size, txt_enc_dim = weights_matrix.size()
         # Initialize embedding layer using the glove weights matrix
         txt_enc_layer = nn.Embedding(vocab_size, txt_enc_dim)

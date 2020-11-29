@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "/u/as3ek/github/reversible-meme/train.py", line 14, in <module>
+    from encoder import Encoder, TextEncoder, ImageEncoder
+  File "/u/as3ek/github/reversible-meme/encoder.py", line 5, in <module>
+    import gensim
+ModuleNotFoundError: No module named 'gensim'
