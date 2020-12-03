@@ -2481,3 +2481,5 @@ Train Batch: [4300/30239]	Loss 6.2822 (6.6388)	Top 1 Accuracy 21.250 (14.610)	To
 Train Batch: [4400/30239]	Loss 6.3894 (6.6389)	Top 1 Accuracy 21.250 (14.611)	Top 5 Accuracy 38.750 (32.104)
 Train Batch: [4500/30239]	Loss 6.5169 (6.6385)	Top 1 Accuracy 13.125 (14.613)	Top 5 Accuracy 30.000 (32.104)
 Train Batch: [4600/30239]	Loss 6.1728 (6.6384)	Top 1 Accuracy 20.000 (14.617)	Top 5 Accuracy 35.625 (32.096)
+Train Batch: [4700/30239]	Loss 6.7338 (6.6383)	Top 1 Accuracy 12.500 (14.624)	Top 5 Accuracy 30.625 (32.100)
+Train Batch: [4800/30239]	Loss 6.9231 (6.6395)	Top 1 Accuracy 13.125 (14.614)	Top 5 Accuracy 28.750 (32.079)
