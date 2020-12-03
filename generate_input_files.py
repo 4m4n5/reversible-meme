@@ -8,7 +8,9 @@ from nltk.tokenize import word_tokenize
 import nltk
 from nltk.corpus import wordnet
 import os
+from random import shuffle
 nltk.download('punkt')
+
 
 def get_synonym(word, n=3):
     synonyms = []
@@ -18,6 +20,7 @@ def get_synonym(word, n=3):
             if len(synonyms) >= n:
                 synonyms.append(word)
                 return random.choice(synonyms)
+
 
 def generate_json_data(metadata_path, caption_path, imgs_path, max_captions_per_image,
                        min_word_count, train_perc, max_caption_length,
@@ -55,15 +58,13 @@ def generate_json_data(metadata_path, caption_path, imgs_path, max_captions_per_
                 tokens = [token.lower() for token in tokens][:max_caption_length]
 
                 # TODO: Use advanced tokens
-                mod_tokens = word_tokenize(value['name']) + tokens
-                mod_tokens = [token.lower() for token in mod_tokens]
-
-                keep_mod_tokens = []
-                for w, tag in nltk.pos_tag(mod_tokens):
+                mod_tokens = []
+                for w, tag in nltk.pos_tag(tokens):
                     if tag in ['FW', 'JJ', 'JJR', 'JJS', 'NN', 'NNP', 'NNPS', 'PDT', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ']:
-                        keep_mod_tokens.append(get_synonym(w))
+                        mod_tokens.append(w)
 
-                mod_tokens = keep_mod_tokens[:max_caption_length]
+                shuffle(mod_tokens)
+                mod_tokens = mod_tokens[:5]
 
                 # Get image path
                 img_path = value['local_link']
@@ -104,8 +105,8 @@ def generate_json_data(metadata_path, caption_path, imgs_path, max_captions_per_
     val_captions = process_caption_tokens(val_caption_tokens, word_dict, max_length)
 
     # Modifiers
-    train_mods = process_caption_tokens(train_mod_tokens, word_dict, max_length)
-    val_mods = process_caption_tokens(val_mod_tokens, word_dict, max_length)
+    train_mods = process_caption_tokens(train_mod_tokens, word_dict, 5)
+    val_mods = process_caption_tokens(val_mod_tokens, word_dict, 5)
 
     # Images
     with open(data_folder + '/train_img_paths.json', 'w') as f:
@@ -144,7 +145,7 @@ if __name__ == "__main__":
     parser.add_argument('--imgs-path', type=str, default='data/images/')
     parser.add_argument('--max-captions', type=int, default=1000,
                         help='maximum number of captions per image')
-    parser.add_argument('--min-word-count', type=int, default=5,
+    parser.add_argument('--min-word-count', type=int, default=0,
                         help='minimum number of occurences of a word to be included in word dictionary')
     parser.add_argument('--train-ratio', type=int, default=80)
     parser.add_argument('--max-caption-length', type=int, default=20)

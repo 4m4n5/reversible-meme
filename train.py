@@ -12,7 +12,7 @@ from torchvision import transforms
 from dataset import MemeDataset
 from decoder import Decoder, AlignNet
 from encoder import Encoder, TextEncoder, ImageEncoder
-from utils import AverageMeter, accuracy, calculate_caption_lengths
+from utils import AverageMeter, accuracy, calculate_caption_lengths, str2bool
 import os
 
 data_transforms = transforms.Compose([
@@ -45,7 +45,7 @@ def main(args):
         decoder.load_state_dict(torch.load(args.decoder_model))
 
     if args.aligner_model:
-        decoder.load_state_dict(torch.load(args.decoder_model))
+        aligner.load_state_dict(torch.load(args.aligner_model))
 
     if torch.cuda.device_count() > 1:
         print("Let's use", torch.cuda.device_count(), "GPUs!")
@@ -58,7 +58,7 @@ def main(args):
     aligner.cuda()
 
     enc_optim = optim.Adam(encoder.parameters(), lr=args.enc_lr)
-    dec_optim = optim.Adam(encoder.parameters(), lr=args.dec_lr)
+    dec_optim = optim.Adam(decoder.parameters(), lr=args.dec_lr)
     aln_optim = optim.Adam(aligner.parameters(), lr=args.aln_lr)
 
     scheduler_enc = optim.lr_scheduler.StepLR(enc_optim, args.step_size)
@@ -82,7 +82,7 @@ def main(args):
         scheduler_dec.step()
         scheduler_aln.step()
         train(epoch, encoder, decoder, aligner, enc_optim, dec_optim, aln_optim,
-              cross_entropy_loss, train_loader, word_dict, args.alpha_c, args.lambda_kld, args.log_interval)
+              cross_entropy_loss, train_loader, word_dict, args.lambda_kld, args.log_interval)
         # validate(epoch, encoder, decoder, cross_entropy_loss, val_loader,
         #          word_dict, args.alpha_c, args.log_interval, writer)
 
@@ -95,14 +95,14 @@ def main(args):
         dec_file = os.path.join(dir, 'decoder_' + str(epoch) + '.pth')
         aln_file = os.path.join(dir, 'aligner_' + str(epoch) + '.pth')
 
-        torch.save(encoder.state_dict(), enc_file)
-        torch.save(decoder.state_dict(), dec_file)
-        torch.save(aligner.state_dict(), aln_file)
+        torch.save(encoder.module.state_dict(), enc_file)
+        torch.save(decoder.module.state_dict(), dec_file)
+        torch.save(aligner.module.state_dict(), aln_file)
 
         print('Saved Model!')
 
 
-def train(epoch, encoder, decoder, aligner, enc_optim, dec_optim, aln_optim, cross_entropy_loss, train_loader, word_dict, alpha_c, lambda_kld, log_interval):
+def train(epoch, encoder, decoder, aligner, enc_optim, dec_optim, aln_optim, cross_entropy_loss, train_loader, word_dict, lambda_kld, log_interval):
     # import pdb; pdb.set_trace()
     encoder.train()
     decoder.train()
@@ -120,16 +120,11 @@ def train(epoch, encoder, decoder, aligner, enc_optim, dec_optim, aln_optim, cro
         aln_optim.zero_grad()
 
         enc_features, mu, logvar = encoder(img, mod)
-        preds, alphas, h = decoder(enc_features, cap)
+        preds, h = decoder(enc_features, cap)
 
         targets = cap[:, 1:]
-        targets = pack_padded_sequence(
-            targets, [len(tar) - 1 for tar in targets], batch_first=True)[0]
+        targets = pack_padded_sequence(targets, [len(tar) - 1 for tar in targets], batch_first=True)[0]
         preds = pack_padded_sequence(preds, [len(pred) - 1 for pred in preds], batch_first=True)[0]
-
-        # Compute losses
-        # Attention Regularization
-        att_regularization_loss = alpha_c * ((1 - alphas.sum(1))**2).mean()
 
         # Captioning Cross Entripy loss
         captioning_loss = cross_entropy_loss(preds, targets)
@@ -138,7 +133,7 @@ def train(epoch, encoder, decoder, aligner, enc_optim, dec_optim, aln_optim, cro
         kld_loss = torch.mean(-0.5 * torch.sum(1 + logvar - mu ** 2 - logvar.exp(), dim=1), dim=0)
 
         # Total loss
-        loss = captioning_loss + att_regularization_loss + lambda_kld*kld_loss
+        loss = captioning_loss + lambda_kld*kld_loss
         loss.backward()
         enc_optim.step()
         dec_optim.step()
@@ -172,18 +167,6 @@ def train(epoch, encoder, decoder, aligner, enc_optim, dec_optim, aln_optim, cro
     # writer.add_scalar('train_top5_acc', top5.avg, epoch)
 
 
-# Helper function for parser
-def str2bool(v):
-    if isinstance(v, bool):
-        return v
-    if v.lower() in ('yes', 'true', 't', 'y', '1'):
-        return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
-        return False
-    else:
-        raise argparse.ArgumentTypeError('Boolean value expected.')
-
-
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='Reversible Meme')
@@ -200,8 +183,6 @@ if __name__ == "__main__":
     parser.add_argument('--lambda_kld', type=float, default=1.0, metavar='lKLD')
     parser.add_argument('--step-size', type=int, default=5,
                         help='step size for learning rate annealing (default: 5)')
-    parser.add_argument('--alpha-c', type=float, default=1, metavar='A',
-                        help='regularization constant (default: 1)')
     parser.add_argument('--log-interval', type=int, default=100, metavar='L',
                         help='number of batches to wait before logging training stats (default: 100)')
     parser.add_argument('--data', type=str, default='/u/as3ek/github/reversible-meme/data',
@@ -218,9 +199,9 @@ if __name__ == "__main__":
     parser.add_argument('--txt-enc-dim', type=int, default=256)
     parser.add_argument('--img-enc-dim', type=int, default=256)
     parser.add_argument('--enc-dim', type=int, default=256)
-    parser.add_argument('--use-glove', type=str2bool, nargs='?', const=True, default=True)
+    parser.add_argument('--use-glove', type=str2bool, nargs='?', const=True, default=False)
     parser.add_argument('--train-enc', type=str2bool, nargs='?', const=True, default=True)
     parser.add_argument('--model-fldr', type=str, default='/u/as3ek/github/reversible-meme/models')
-    parser.add_argument('--id', type=str, default='')
+    parser.add_argument('--id', type=str, default='no_glove_rerun')
 
     main(parser.parse_args())

@@ -1,5 +1,0 @@
-Namespace(aligner_model=None, aln_lr=0.0001, alpha_c=1, batch_size=32, data='/u/as3ek/github/reversible-meme/data', dec_lr=0.0001, decoder_model=None, enc_dim=256, enc_lr=0.0001, encoder_model=None, epochs=10, glove_path='/u/as3ek/github/reversible-meme/data/glove/glove.twitter.27B.200d.txt', id='no_glove', img_enc_dim=256, img_enc_net='resnet18', lambda_kld=1.0, log_interval=100, model_fldr='/u/as3ek/github/reversible-meme/models', step_size=5, train_enc=True, txt_enc_dim=256, use_glove=False, use_tf=False)
-Let's use 4 GPUs!
-Train Batch: [0/30247]	Loss 12.4457 (12.4457)	Top 1 Accuracy 0.000 (0.000)	Top 5 Accuracy 0.000 (0.000)
-Train Batch: [100/30247]	Loss 11.9749 (12.0479)	Top 1 Accuracy 0.000 (0.000)	Top 5 Accuracy 0.000 (0.005)
-Train Batch: [200/30247]	Loss 12.0109 (12.0262)	Top 1 Accuracy 0.000 (0.000)	Top 5 Accuracy 0.000 (0.004)
