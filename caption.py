@@ -18,15 +18,15 @@ from train import data_transforms
 from utils import str2bool
 
 
-def generate_caption(encoder, decoder, aligner, img_path, word_dict, beam_size=3, smooth=True):
+def generate_caption(encoder, decoder, img_path, word_dict, beam_size=5, smooth=True):
+    # import pdb; pdb.set_trace()
     img = pil_loader(img_path)
     img = data_transforms(img)
     img = torch.FloatTensor(img).unsqueeze(0)
-    mod = torch.tensor([0, 6, 233, 234, 5, 231, 1]).unsqueeze(0)
-    import pdb; pdb.set_trace()
-    features, mu, logvar = encoder(img, mod)
-    features = features.expand(beam_size, features.size(1))
-    sentence = decoder.caption(features, beam_size)
+    mod = torch.tensor([0, 238, 5, 237, 235, 124, 1]).unsqueeze(0)
+    features = encoder(img, mod)
+    features = features.expand(beam_size, features.size(1), features.size(2))
+    sentence, alpha = decoder.caption(features, beam_size)
 
     token_dict = {idx: word for word, idx in word_dict.items()}
     sentence_tokens = []
@@ -34,6 +34,7 @@ def generate_caption(encoder, decoder, aligner, img_path, word_dict, beam_size=3
         sentence_tokens.append(token_dict[word_idx])
         if word_idx == word_dict['<eos>']:
             break
+
     print(sentence_tokens)
     return sentence_tokens
 
@@ -75,45 +76,42 @@ if __name__ == "__main__":
     parser.add_argument('--img-enc-net', choices=['vgg19', 'resnet18', 'resnet34'], default='resnet18',
                         help='Network to use in the encoder (default: resnet18)')
     parser.add_argument('--encoder-model', type=str,
-                        default='/u/as3ek/github/reversible-meme/models/glove_rerun/encoder_7.pth')
+                        default='/u/as3ek/github/reversible-meme/models/run3/encoder_3.pth')
     parser.add_argument('--decoder-model', type=str,
-                        default='/u/as3ek/github/reversible-meme/models/glove_rerun/decoder_7.pth')
+                        default='/u/as3ek/github/reversible-meme/models/run3/decoder_3.pth')
     parser.add_argument('--aligner-model', type=str,
-                        default='/u/as3ek/github/reversible-meme/models/glove_rerun/aligner_7.pth')
+                        default='')
     parser.add_argument('--glove-path', type=str,
                         default='/u/as3ek/github/reversible-meme/data/glove/glove.twitter.27B.200d.txt')
     parser.add_argument('--use-tf', action='store_true', default=False,
                         help='Use teacher forcing when training LSTM (default: False)')
-    parser.add_argument('--txt-enc-dim', type=int, default=256)
-    parser.add_argument('--img-enc-dim', type=int, default=256)
-    parser.add_argument('--enc-dim', type=int, default=256)
-    parser.add_argument('--use-glove', type=str2bool, nargs='?', const=False, default=True)
+    parser.add_argument('--txt-enc-dim', type=int, default=512)
+    parser.add_argument('--img-enc-dim', type=int, default=512)
+    parser.add_argument('--enc-dim', type=int, default=512)
+    parser.add_argument('--use-glove', type=str2bool, nargs='?', const=False, default=False)
     parser.add_argument('--train-enc', type=str2bool, nargs='?', const=True, default=True)
     parser.add_argument('--model-fldr', type=str, default='/u/as3ek/github/reversible-meme/models')
     parser.add_argument('--id', type=str, default='')
     parser.add_argument('--img-path', type=str,
-                        default='/u/as3ek/github/reversible-meme/data/images/Y-U-No.png')
+                        default='/u/as3ek/github/reversible-meme/data/images/Anti-Joke-Chicken.png')
 
     args = parser.parse_args()
 
     word_dict = json.load(open(args.data + '/word_dict.json', 'r'))
     vocab_size = len(word_dict)
 
-    lstm_hidden_dim = 256
+    lstm_hidden_dim = 512
     if args.use_glove:
         lstm_hidden_dim = 200
 
-    encoder = Encoder(args.txt_enc_dim, args.img_enc_dim, args.enc_dim, word_dict,
+    encoder = Encoder(args.txt_enc_dim, args.enc_dim, word_dict,
                       args.img_enc_net, args.use_glove, args.glove_path, args.train_enc)
     decoder = Decoder(encoder, vocab_size, args.enc_dim, lstm_hidden_dim, use_tf=args.use_tf)
-    aligner = AlignNet(lstm_hidden_dim, enc_dim=args.enc_dim)
 
     encoder.load_state_dict(torch.load(args.encoder_model))
     decoder.load_state_dict(torch.load(args.decoder_model))
-    aligner.load_state_dict(torch.load(args.aligner_model))
 
     encoder.eval()
     decoder.eval()
-    aligner.eval()
 
-    generate_caption(encoder, decoder, aligner, args.img_path, word_dict)
+    generate_caption(encoder, decoder, args.img_path, word_dict)
