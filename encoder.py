@@ -3,63 +3,62 @@ import torch.nn as nn
 from torchvision.models import resnet18, resnet34, vgg19
 import numpy as np
 
-
 class Encoder(nn.Module):
-    def __init__(self, txt_enc_dim, img_enc_dim, enc_dim, word_dict, img_enc_net, use_glove, glove_path, train_enc, hidden_dim=256):
+    def __init__(self, txt_enc_dim, enc_dim, word_dict, img_enc_net, use_glove, glove_path, train_enc):
         super(Encoder, self).__init__()
 
-        # Consider last element of hidden dims as final enc dimension
+        self.txt_enc_dim = txt_enc_dim
         self.enc_dim = enc_dim
         # Initialize text encoder
         self.txt_encoder = TextEncoder(word_dict, txt_enc_dim, use_glove, glove_path, train_enc)
         # Initialize text encoder
-        self.img_encoder = ImageEncoder(img_enc_dim, img_enc_net)
+        self.img_encoder = ImageEncoder(img_enc_net)
+        self.img_enc_dim = self.img_encoder.img_enc_dim
+
+        # TODO: Check numbers
+        self.a = torch.nn.Parameter(torch.tensor([1.0, 10.0, 1.0, 1.0]))
 
         # Design final encoding network using hidden dims
         self.gate_w = nn.Parameter(torch.rand(1))
-        self.gate_fc = nn.Sequential(
-            nn.Linear(img_enc_dim+txt_enc_dim, hidden_dim),
+        self.gate = nn.Sequential(
+            nn.BatchNorm2d(self.txt_enc_dim + self.img_enc_dim),
+            nn.Conv2d(self.txt_enc_dim + self.img_enc_dim, self.txt_enc_dim +
+                      self.img_enc_dim, kernel_size=3, padding=1),
             nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
+            nn.Conv2d(self.txt_enc_dim + self.img_enc_dim, self.enc_dim, kernel_size=3, padding=1),
             nn.Sigmoid()
         )
 
         self.res_w = nn.Parameter(torch.rand(1))
-        self.res_fc = nn.Sequential(
-            nn.Linear(img_enc_dim+txt_enc_dim, hidden_dim),
+        self.res = nn.Sequential(
+            nn.BatchNorm2d(self.txt_enc_dim + self.img_enc_dim),
+            nn.Conv2d(self.txt_enc_dim + self.img_enc_dim, self.txt_enc_dim +
+                      self.img_enc_dim, kernel_size=3, padding=1),
             nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim)
+            nn.Conv2d(self.txt_enc_dim + self.img_enc_dim, self.enc_dim, kernel_size=3, padding=1)
         )
-
-        # Initialize seperate layers for mu and sigma
-        self.fc_mu = nn.Linear(hidden_dim, self.enc_dim)
-        self.fc_var = nn.Linear(hidden_dim, self.enc_dim)
 
     def forward(self, img, mod):
         # Encode both data
         img_enc = self.img_encoder(img)
         txt_enc = self.txt_encoder(mod)
 
+        # Reshape bs x txt_enc_dim -> bs x txt_enc_dim x 7 x 7
+        txt_enc = txt_enc.reshape((txt_enc.shape[0], txt_enc.shape[1], 1, 1)).repeat(
+            1, 1, img_enc.shape[2], img_enc.shape[3])
+
         # Concat on the first dimension
         x = torch.cat([img_enc, txt_enc], dim=1)
-        x_gate = self.gate_fc(x) * txt_enc
-        x_res = self.res_fc(x)
-        x = self.gate_w * x_gate + self.res_w * x_res
 
-        # Get mu and logvar using dc layers
-        mu = self.fc_mu(x)
-        logvar = self.fc_var(x)
+        x_res = self.res(x)
+        x_gate = self.gate(x)
 
-        # Sample z using reparameterization
-        z = self.reparameterize(mu, logvar)
+        x = self.gate_w * x_gate * img_enc + self.res_w * x_res
 
-        return z, mu, logvar
+        x = x.permute(0, 2, 3, 1)
+        x = x.view(x.size(0), -1, x.size(-1))
 
-    def reparameterize(self, mu, logvar):
-        # Sample z using mu and logvar
-        std = torch.exp(0.5 * logvar)
-        eps = torch.randn_like(std)
-        return eps * std + mu
+        return x
 
 
 class TextEncoder(nn.Module):
@@ -143,38 +142,32 @@ class TextEncoder(nn.Module):
 
 
 class ImageEncoder(nn.Module):
-    def __init__(self, img_enc_dim, img_enc_net):
+    def __init__(self, img_enc_net):
         super(ImageEncoder, self).__init__()
         # Save values for which model to use and the embedding size
         self.img_enc_net = img_enc_net
-        self.img_enc_dim = img_enc_dim
 
         # Initialize image encoder based on given input
-        self.img_encoder, img_dim = self.get_image_encoder(img_enc_net)
-        # Initialize a FC layer for transforming encoding
-        self.fc = nn.Linear(img_dim, self.img_enc_dim)
+        self.img_encoder, self.img_enc_dim = self.get_image_encoder(img_enc_net)
 
     def forward(self, x):
         # Encode image using model
         x = self.img_encoder(x)
-        # Flatten
-        x = x.view(x.size(0), -1)
-        # Transform to get embeddings
-        x = self.fc(x)
+
         return x
 
     def get_image_encoder(self, img_enc_net):
         if img_enc_net == 'resnet18':
             img_enc = resnet18(pretrained=True)
-            img_enc = nn.Sequential(*list(img_enc.children())[:-1])
+            img_enc = nn.Sequential(*list(img_enc.children())[:-2])
             img_dim = 512
         if img_enc_net == 'resnet34':
             img_enc = resnet34(pretrained=True)
-            img_enc = nn.Sequential(*list(img_enc.children())[:-1])
+            img_enc = nn.Sequential(*list(img_enc.children())[:-2])
             img_dim = 512
         if img_enc_net == 'resnet50':
             img_enc = resnet50(pretrained=True)
-            img_enc = nn.Sequential(*list(img_enc.children())[:-1])
+            img_enc = nn.Sequential(*list(img_enc.children())[:-2])
             img_dim = 2048
         if img_enc_net == 'vgg19':
             img_enc = vgg19(pretrained=True)

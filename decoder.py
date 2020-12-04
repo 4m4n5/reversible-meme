@@ -1,8 +1,10 @@
 import torch
 import torch.nn as nn
+from attention import Attention
+
 
 class Decoder(nn.Module):
-    def __init__(self, encoder, vocab_size, enc_dim, lstm_hidden_dim=256, use_tf=False):
+    def __init__(self, encoder, vocab_size, enc_dim, lstm_hidden_dim=512, use_tf=False):
         super(Decoder, self).__init__()
         # Use teacher forcing?
         self.use_tf = use_tf
@@ -22,10 +24,10 @@ class Decoder(nn.Module):
         self.deep_output = nn.Linear(lstm_hidden_dim, vocab_size)
         self.dropout = nn.Dropout()
 
+        self.attention = Attention(enc_dim, lstm_hidden_dim)
         self.lstm = nn.LSTMCell(enc_dim + lstm_hidden_dim, lstm_hidden_dim)
 
     def forward(self, encoding, caption):
-        # import pdb; pdb.set_trace()
         batch_size = encoding.size(0)
 
         h, c = self.get_init_lstm_state(encoding)
@@ -38,66 +40,63 @@ class Decoder(nn.Module):
             embedding = self.embedding(prev_words)
 
         preds = torch.zeros(batch_size, max_timespan, self.vocab_size).cuda()
+        alphas = torch.zeros(batch_size, max_timespan, encoding.size(1)).cuda()
 
         for t in range(max_timespan):
-            # context, alpha = self.attention(encoding.unsqueeze(1).unsqueeze(1), h)
-            # gate = self.sigmoid(self.f_beta(h))
-            # gated_context = gate * context
+            context, alpha = self.attention(encoding, h)
+            gate = self.sigmoid(self.f_beta(h))
+            gated_context = gate * context
 
             if self.use_tf and self.training:
-                # lstm_input = torch.cat((embedding[:, t], gated_context), dim=1)
-                lstm_input = torch.cat((embedding[:, t], encoding), dim=1)
+                lstm_input = torch.cat((embedding[:, t], gated_context), dim=1)
             else:
                 embedding = embedding.squeeze(1) if embedding.dim() == 3 else embedding
-                # lstm_input = torch.cat((embedding, gated_context), dim=1)
-                lstm_input = torch.cat((embedding, encoding), dim=1)
+                lstm_input = torch.cat((embedding, gated_context), dim=1)
 
             h, c = self.lstm(lstm_input, (h, c))
             output = self.deep_output(self.dropout(h))
 
             preds[:, t] = output
-            # alphas[:, t] = alpha
+            alphas[:, t] = alpha
 
             if not self.training or not self.use_tf:
                 embedding = self.embedding(output.max(1)[1].reshape(batch_size, 1))
 
-        return preds, h
+        return preds, alphas, h
 
     def get_init_lstm_state(self, encoding):
-        c = self.init_c(encoding)
+        mean_encoding = encoding.mean(dim=1)
+
+        c = self.init_c(mean_encoding)
         c = self.tanh(c)
 
-        h = self.init_h(encoding)
+        h = self.init_h(mean_encoding)
         h = self.tanh(h)
 
         return h, c
 
     def caption(self, encoding, beam_size):
-        """
-        We use beam search to construct the best sentences following a
-        similar implementation as the author in
-        https://github.com/kelvinxu/arctic-captions/blob/master/generate_caps.py
-        """
-        # import pdb; pdb.set_trace()
+        import pdb; pdb.set_trace()
         prev_words = torch.zeros(beam_size, 1).long()
 
         sentences = prev_words
         top_preds = torch.zeros(beam_size, 1)
-        # alphas = torch.ones(beam_size, 1, encoding.size(1))
+        alphas = torch.ones(beam_size, 1, encoding.size(1))
 
         completed_sentences = []
-        # completed_sentences_alphas = []
+        completed_sentences_alphas = []
         completed_sentences_preds = []
 
         step = 1
         h, c = self.get_init_lstm_state(encoding)
+
         while True:
             embedding = self.embedding(prev_words).squeeze(1)
-            # context, alpha = self.attention(encoding, h)
-            # gate = self.sigmoid(self.f_beta(h))
-            # gated_context = gate * context
+            context, alpha = self.attention(encoding, h)
+            gate = self.sigmoid(self.f_beta(h))
+            gated_context = gate * context
 
-            lstm_input = torch.cat((embedding, encoding), dim=1)
+            lstm_input = torch.cat((embedding, gated_context), dim=1)
             h, c = self.lstm(lstm_input, (h, c))
             output = self.deep_output(h)
             output = top_preds.expand_as(output) + output
@@ -110,21 +109,21 @@ class Decoder(nn.Module):
             next_word_idxs = top_words % output.size(1)
 
             sentences = torch.cat((sentences[prev_word_idxs], next_word_idxs.unsqueeze(1)), dim=1)
-            # alphas = torch.cat((alphas[prev_word_idxs], alpha[prev_word_idxs].unsqueeze(1)), dim=1)
+            alphas = torch.cat((alphas[prev_word_idxs], alpha[prev_word_idxs].unsqueeze(1)), dim=1)
 
             incomplete = [idx for idx, next_word in enumerate(next_word_idxs) if next_word != 1]
             complete = list(set(range(len(next_word_idxs))) - set(incomplete))
 
             if len(complete) > 0:
                 completed_sentences.extend(sentences[complete].tolist())
-                # completed_sentences_alphas.extend(alphas[complete].tolist())
+                completed_sentences_alphas.extend(alphas[complete].tolist())
                 completed_sentences_preds.extend(top_preds[complete])
             beam_size -= len(complete)
 
             if beam_size == 0:
                 break
             sentences = sentences[incomplete]
-            # alphas = alphas[incomplete]
+            alphas = alphas[incomplete]
             h = h[prev_word_idxs[incomplete]]
             c = c[prev_word_idxs[incomplete]]
             encoding = encoding[prev_word_idxs[incomplete]]
@@ -137,8 +136,8 @@ class Decoder(nn.Module):
 
         idx = completed_sentences_preds.index(max(completed_sentences_preds))
         sentence = completed_sentences[idx]
-        # alpha = completed_sentences_alphas[idx]
-        return sentence
+        alpha = completed_sentences_alphas[idx]
+        return sentence, alpha
 
 
 class AlignNet(nn.Module):
