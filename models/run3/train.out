@@ -1506,3 +1506,4 @@ Train Batch: [12500/15120]	Loss 2.8677 (2.8159)	Top 1 Accuracy 53.750 (56.532)	T
 Train Batch: [12600/15120]	Loss 2.6372 (2.8161)	Top 1 Accuracy 58.672 (56.530)	Top 5 Accuracy 75.859 (72.788)
 Train Batch: [12700/15120]	Loss 2.6808 (2.8158)	Top 1 Accuracy 57.422 (56.534)	Top 5 Accuracy 73.594 (72.790)
 Train Batch: [12800/15120]	Loss 2.8968 (2.8160)	Top 1 Accuracy 55.078 (56.532)	Top 5 Accuracy 72.031 (72.787)
+Train Batch: [12900/15120]	Loss 2.9179 (2.8161)	Top 1 Accuracy 54.141 (56.530)	Top 5 Accuracy 69.688 (72.786)
