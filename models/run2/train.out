@@ -1976,3 +1976,4 @@ Train Batch: [14800/30239]	Loss 2.8559 (2.9281)	Top 1 Accuracy 56.719 (56.245)	T
 Train Batch: [14900/30239]	Loss 2.9133 (2.9280)	Top 1 Accuracy 56.562 (56.246)	Top 5 Accuracy 74.375 (72.284)
 Train Batch: [15000/30239]	Loss 2.8258 (2.9281)	Top 1 Accuracy 57.656 (56.243)	Top 5 Accuracy 73.438 (72.281)
 Train Batch: [15100/30239]	Loss 2.8694 (2.9282)	Top 1 Accuracy 58.594 (56.240)	Top 5 Accuracy 74.375 (72.281)
+Train Batch: [15200/30239]	Loss 2.8654 (2.9280)	Top 1 Accuracy 56.406 (56.243)	Top 5 Accuracy 73.594 (72.284)
