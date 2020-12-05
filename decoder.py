@@ -75,6 +75,11 @@ class Decoder(nn.Module):
 
         return h, c
 
+    def reparameterize(self, mu, logvar):
+        std = torch.exp(0.5 * logvar)
+        eps = torch.randn_like(std)
+        return eps * std + mu
+
     def caption(self, encoding, beam_size):
         import pdb; pdb.set_trace()
         prev_words = torch.zeros(beam_size, 1).long()

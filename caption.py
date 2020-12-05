@@ -23,7 +23,7 @@ def generate_caption(encoder, decoder, img_path, word_dict, beam_size=5, smooth=
     img = pil_loader(img_path)
     img = data_transforms(img)
     img = torch.FloatTensor(img).unsqueeze(0)
-    mod = torch.tensor([0, 238, 5, 237, 235, 124, 1]).unsqueeze(0)
+    mod = torch.tensor([0, 254, 5554, 2343, 255, 12, 1]).unsqueeze(0)
     features = encoder(img, mod)
     features = features.expand(beam_size, features.size(1), features.size(2))
     sentence, alpha = decoder.caption(features, beam_size)
@@ -93,7 +93,7 @@ if __name__ == "__main__":
     parser.add_argument('--model-fldr', type=str, default='/u/as3ek/github/reversible-meme/models')
     parser.add_argument('--id', type=str, default='')
     parser.add_argument('--img-path', type=str,
-                        default='/u/as3ek/github/reversible-meme/data/images/Anti-Joke-Chicken.png')
+                        default='/u/as3ek/github/reversible-meme/data/images/Bad-Luck-Brian.png')
 
     args = parser.parse_args()
 
