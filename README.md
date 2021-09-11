@@ -10,4 +10,4 @@ emotion and tone it conveys. These embeddings can then be
 further used to generate humorous captions given a meme
 template.
 
-![report]()
+![report](https://github.com/4m4n5/reversible-meme/blob/master/data/vislang_project_report.pdf)
